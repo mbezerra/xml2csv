@@ -89,13 +89,7 @@ function xml2array ($xmlObject, $out = []) {
 /**
  * mountOutputToCsv
  *
- * @param  array $xmlArray
- * @param  float $vPISt
- * @param  float $vCOFINSt
- * @param  float $vIPIt
- * @param  int $key
- * @param  array $prodArray
- * @param  int $qtdItens
+ * @param  array data
  * @return array $row
  */
 function mountOutputToCsv($data) {    
