@@ -191,3 +191,139 @@ function mountOutputToCsv($data) {
 
     return $row;
 }
+function mountOutputToCsv($data) {    
+    $xmlArray = $data['xmlArray'];
+    $vPISt = $data['vPISt'];
+    $vCOFINSt = $data['vCOFINSt'];
+    $vIPIt = $data['vIPIt'];
+    $key = $data['key'];
+    $prodArray = $data['prodArray'];
+    $qtdItens = $data['qtdItens'];
+    $row[15] = '';
+
+    $row[0] = $xmlArray['NFe']['infNFe']['@attributes']['versao'];
+
+    $row[1] = $xmlArray['NFe']['infNFe']['ide']['serie'];
+
+    $row[2] = strval('"' . $xmlArray['NFe']['infNFe']['ide']['nNF'] . '"');
+
+    if(array_key_exists('dEmi', $xmlArray['NFe']['infNFe']['ide'])) {
+        $row[3] = date('d/m/Y', strtotime($xmlArray['NFe']['infNFe']['ide']['dEmi']));
+    } elseif(array_key_exists('dhEmi', $xmlArray['NFe']['infNFe']['ide'])) {
+        $row[3] = date('d/m/Y', strtotime($xmlArray['NFe']['infNFe']['ide']['dhEmi']));
+    }
+    
+    $row[4] = $prodArray ? $prodArray['@attributes']['nItem'] : $xmlArray['NFe']['infNFe']['det']['@attributes']['nItem'];
+
+    $row[5] = $prodArray ? strval('"' . $prodArray['prod']['cProd'] . "'") : strval('"' . $xmlArray['NFe']['infNFe']['det']['prod']['cProd'] . '"');
+
+    $row[6] = $prodArray ? $prodArray['prod']['CFOP'] : $xmlArray['NFe']['infNFe']['det']['prod']['CFOP'];
+
+    $qCom = $prodArray ? floatval($prodArray['prod']['qCom']) : floatval($xmlArray['NFe']['infNFe']['det']['prod']['qCom']);
+    $vProd = $prodArray ? $prodArray['prod']['vProd'] : $xmlArray['NFe']['infNFe']['det']['prod']['vProd'];
+    $row[7] = number_format($vProd, 2, ',', '.');
+
+    $descFrom = $prodArray ? $prodArray['prod'] : $xmlArray['NFe']['infNFe']['det']['prod'];
+    if(array_key_exists('vDesc', $descFrom)) {
+        $desc = floatval($descFrom['vDesc']);
+    } else {
+        $desc = 0.00;
+    }
+    $row[8] = number_format($desc, 2, ',', '.');
+
+    $icmsFrom = $prodArray ? $prodArray['imposto']['ICMS'] : $xmlArray['NFe']['infNFe']['det']['imposto']['ICMS'];
+    $firstKey = array_key_first($icmsFrom);
+    if(!in_array($icmsFrom[$firstKey]['CST'], ['30', '40', '41', '50', '51', '60'])) {
+        $vICMS = $icmsFrom[$firstKey]['vICMS'];
+    } else {
+        $vICMS = 0.00;
+    }
+    $row[9] = number_format($vICMS, 2, ',', '.');
+
+    $impostoFrom = $prodArray ? $prodArray['imposto'] : $xmlArray['NFe']['infNFe']['det']['imposto'];
+    if(array_key_exists('IPI', $impostoFrom)) {
+        if(array_key_exists('IPITrib', $impostoFrom['IPI'])) {
+            $pIPI = $impostoFrom['IPI']['IPITrib']['pIPI'];
+            $vIPI = $impostoFrom['IPI']['IPITrib']['vIPI'];
+        } else {
+            $pIPI = 0.00;
+            $vIPI = 0.00;
+        }
+    } else {
+        $pIPI = 0.00;
+        $vIPI = 0.00;
+    }
+    if(!floatval($vIPI) && !floatval($pIPI) && floatval($vIPIt)) {
+        $vIPI = $vIPIt / $qtdItens;
+        if($row[15] != '') {
+            $row[15] .= ' | ';
+        }
+        $row[15] .= 'IPI calculado pela média';
+    } elseif(!floatval($vIPI) && floatval($pIPI)) {
+        $vIPI = $qCom * $vProd * $pIPI / 100;
+    }
+    $row[10] = number_format($vIPI, 2, ',', '.');
+
+    $pisFrom = $prodArray ? $prodArray['imposto']['PIS'] : $xmlArray['NFe']['infNFe']['det']['imposto']['PIS'];
+    $firstKey = array_key_first($pisFrom);
+    if(!in_array($pisFrom[$firstKey]['CST'], ['07','08','09'])) {
+        if(array_key_exists('vPIS', $pisFrom[$firstKey])) {
+            $vPIS = $pisFrom[$firstKey]['vPIS'];
+        } else {
+            $vPIS = 0.00;
+        }
+        if(array_key_exists('pPIS', $pisFrom[$firstKey])) {
+            $pPIS = $pisFrom[$firstKey]['pPIS'];
+        } else {
+            $pPIS = 0.00;
+        }
+    } else {
+        $pPIS = 0.00;
+        $vPIS = 0.00;
+    }
+    if(!floatval($vPIS) && !floatval($pPIS) && floatval($vPISt)) {
+        $vPIS = $vPISt / $qtdItens;
+        if($row[15] != '') {
+            $row[15] .= ' | ';
+        }
+        $row[15] .= 'PIS calculado pela média';
+    } elseif(!floatval($vPIS) && floatval($pPIS)) {
+        $vPIS = $qCom * $vProd * $pPIS / 100;
+    }
+    $row[11] = number_format($vPIS, 2, ',', '.');
+
+    $cofinsFrom = $prodArray ? $prodArray['imposto']['COFINS'] : $xmlArray['NFe']['infNFe']['det']['imposto']['COFINS'];
+    $firstKey = array_key_first($cofinsFrom);
+    if(!in_array($cofinsFrom[$firstKey]['CST'], ['07','08','09'])) {
+        if(array_key_exists('vCOFINS', $cofinsFrom[$firstKey])) {
+            $vCOFINS = $cofinsFrom[$firstKey]['vCOFINS'];
+        } else {
+            $vCOFINS = 0.00;
+        }
+        if(array_key_exists('pCOFINS', $cofinsFrom[$firstKey])) {
+            $pCOFINS = $cofinsFrom[$firstKey]['pCOFINS'];
+        } else {
+            $pCOFINS = 0.00;
+        }
+    } else {
+        $pCOFINS = 0.00;
+        $vCOFINS = 0.00;
+    }
+    if(!floatval($vCOFINS) && !floatval($pCOFINS) && floatval($vCOFINSt)) {
+        $vCOFINS = $vCOFINSt / $qtdItens;
+        if($row[15] != '') {
+            $row[15] .= ' | ';
+        }
+        $row[15] .= 'COFINS calculado pela média';
+    } elseif(!floatval($vCOFINS) && floatval($pCOFINS)) {
+        $vCOFINS = $qCom * $vProd * $pCOFINS / 100;
+    }
+    $row[12] = number_format($vCOFINS, 2, ',', '.');
+
+    $row[13] = ($key + 1) == $qtdItens ? number_format($xmlArray['NFe']['infNFe']['total']['ICMSTot']['vNF'], 2, ',', '.') : '';
+
+    $row[14] = ($key + 1) == $qtdItens ? strval('"' . $xmlArray['protNFe']['infProt']['chNFe'] . '"') : '';
+    
+    ksort($row);
+    return $row;
+}
